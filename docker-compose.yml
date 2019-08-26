@@ -1,0 +1,43 @@
+version: '3'
+networks: 
+  core-network:
+services:
+  n1:
+    image: bitnami/cassandra:latest
+    volumes: 
+      - n1-vol:/bitnami
+    environment:
+      - CASSANDRA_CLUSTER_NAME=cluster
+      - CASSANDRA_SEEDS=n1,n2,n3
+      - CASSANDRA_PASSWORD_SEEDER=yes
+      - CASSANDRA_PASSWORD=password123
+    ports:
+      - 9042:9042
+    networks: 
+      - core-network
+
+  n2:
+    image: bitnami/cassandra:latest
+    volumes: 
+      - n2-vol:/bitnami
+    environment:
+      - CASSANDRA_CLUSTER_NAME=cluster
+      - CASSANDRA_SEEDS=n1,n2,n3
+      - CASSANDRA_PASSWORD=password123
+    networks: 
+      - core-network
+  
+  n3:
+    image: bitnami/cassandra:latest
+    volumes: 
+      - n3-vol:/bitnami
+    environment:
+      - CASSANDRA_CLUSTER_NAME=cluster
+      - CASSANDRA_SEEDS=n1,n2,n3
+      - CASSANDRA_PASSWORD=password123
+    networks: 
+      - core-network
+volumes: 
+  n1-vol:
+  n2-vol:
+  n3-vol:
