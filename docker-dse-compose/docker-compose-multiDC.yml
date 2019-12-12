@@ -1,0 +1,73 @@
+version: '3'
+services:
+  seed_node_DC1:
+    image: "datastax/dse-server:6.7.0"
+    container_name: seed_node_DC1
+    environment:
+      - DS_LICENSE=accept
+      - SEEDS=seed_node_DC1,seed_node_DC2
+      - DC=DC1
+      - JVM_EXTRA_OPTS=-Xmx1g -Xms1g
+      - NUM_TOKENS=32
+    # Allow DSE to lock memory with mlock
+    cap_add:
+    - IPC_LOCK
+    ulimits:
+      memlock: -1
+  seed_node_DC2:
+    image: "datastax/dse-server:6.7.0"
+    container_name: seed_node_DC2
+    environment:
+      - DS_LICENSE=accept
+      - SEEDS=seed_node_DC1,seed_node_DC2
+      - DC=DC2
+      - JVM_EXTRA_OPTS=-Xmx1g -Xms1g
+      - NUM_TOKENS=32
+    depends_on:
+      - seed_node_DC1
+    entrypoint: ["/opt/dse/script/wait-for-DSE.sh", "seed_node_DC1", "9042", "/entrypoint.sh", "dse", "cassandra", "-f"]
+    volumes:
+      - ./script/:/opt/dse/script/
+    # Allow DSE to lock memory with mlock
+    cap_add:
+    - IPC_LOCK
+    ulimits:
+      memlock: -1
+  node_DC1:
+    image: "datastax/dse-server:6.7.0"
+    container_name: node_DC1
+    environment:
+      - DS_LICENSE=accept
+      - SEEDS=seed_node_DC1,seed_node_DC2
+      - DC=DC1
+      - JVM_EXTRA_OPTS=-Xmx1g -Xms1g
+      - NUM_TOKENS=32
+    depends_on:
+      - seed_node_DC2
+    entrypoint: ["/opt/dse/script/wait-for-DSE.sh", "seed_node_DC2", "9042" ,"/entrypoint.sh", "dse", "cassandra", "-f"]
+    volumes:
+      - ./script/:/opt/dse/script/
+    # Allow DSE to lock memory with mlock
+    cap_add:
+    - IPC_LOCK
+    ulimits:
+      memlock: -1
+  node_DC2:
+    image: "datastax/dse-server:6.7.0"
+    container_name: node_DC2
+    environment:
+      - DS_LICENSE=accept
+      - SEEDS=seed_node_DC1,seed_node_DC2
+      - DC=DC2
+      - JVM_EXTRA_OPTS=-Xmx1g -Xms1g
+      - NUM_TOKENS=32
+    depends_on:
+      - node_DC1
+    entrypoint: ["/opt/dse/script/wait-for-DSE.sh", "node_DC1", "9042", "/entrypoint.sh", "dse", "cassandra", "-f"]
+    volumes:
+      - ./script/:/opt/dse/script/
+    # Allow DSE to lock memory with mlock
+    cap_add:
+    - IPC_LOCK
+    ulimits:
+      memlock: -1

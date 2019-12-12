@@ -1,0 +1,102 @@
+version: '3.3'
+services:
+  seed_node:
+    image: "datastax/dse-server:6.7.0"
+    container_name: elk_node1
+    environment:
+      - DS_LICENSE=accept
+      - JVM_EXTRA_OPTS=-Xmx1g -Xms1g
+      - NUM_TOKENS=32
+    # Allow DSE to lock memory with mlock
+    cap_add:
+      - IPC_LOCK
+    ulimits:
+      memlock: -1
+    ports:
+      - 9042:9042
+    networks:
+      - dse_network
+    volumes:
+      - ./filebeat/:/opt/dse/filebeat/
+    logging:
+      options:
+        max-size: 50m
+  node:
+    image: "datastax/dse-server:6.7.0"
+    container_name: elk_node2
+    environment:
+      - DS_LICENSE=accept
+      - SEEDS=seed_node
+      - JVM_EXTRA_OPTS=-Xmx1g -Xms1g
+      - NUM_TOKENS=32
+    depends_on:
+      - seed_node
+    # Allow DSE to lock memory with mlock
+    cap_add:
+      - IPC_LOCK
+    ulimits:
+      memlock: -1
+    networks:
+      - dse_network
+    volumes:
+      - ./filebeat/:/opt/dse/filebeat/
+    logging:
+      options:
+        max-size: 50m
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:6.5.4
+    container_name: elasticsearch
+    environment:
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - discovery.zen.minimum_master_nodes=1
+      - discovery.type=single-node
+    cap_add:
+      - IPC_LOCK
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - 9200:9200
+    networks:
+      - dse_network
+    logging:
+      options:
+        max-size: 50m
+  logstash:
+    image: docker.elastic.co/logstash/logstash-oss:6.5.4
+    container_name: logstash
+    environment:
+      - LS_JAVA_OPTS=-Xmx256m -Xms256m
+    volumes:
+      - ./type/:/usr/share/logstash/type/
+      - ./pipeline/:/usr/share/logstash/pipeline/
+    ports:
+      - "9600:9600"
+    networks:
+      - dse_network
+    depends_on:
+      - elasticsearch
+    logging:
+      options:
+        max-size: 50m
+  kibana:
+    image: docker.elastic.co/kibana/kibana-oss:6.5.4
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - SERVER_NAME="{{.Node.Hostname}}-kibana"
+      - SERVER_HOST="0"
+    networks:
+      - dse_network
+    ports:
+      - 5601:5601
+    depends_on:
+      - elasticsearch
+    logging:
+      options:
+        max-size: 50m
+networks:
+  dse_network:
